@@ -1,0 +1,12 @@
+.error-title {
+  display: flex;
+  align-items: center;
+  color: #d32f2f;
+  mat-icon {
+    margin-right: 8px;
+  }
+}
+.error-content {
+  padding: 16px 24px;
+  font-size: 16px;
+}

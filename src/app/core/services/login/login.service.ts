@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, tap } from 'rxjs';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { BehaviorSubject, Observable, switchMap, tap } from 'rxjs';
 import { Router } from '@angular/router';
 import { User } from '../../interfaces/user/user';
 import { environment } from 'src/environments/environment';
@@ -10,7 +10,7 @@ import { environment } from 'src/environments/environment';
 export class LoginService {
   private apiUrl = environment.base_api; // Reemplaza con tu endpoint real
   private isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
-  private authTokenKey = 'authToken';
+  //private authTokenKey = 'authToken';
   private userDataKey = 'userData';
 
   constructor(private http: HttpClient, private router: Router) {
@@ -19,38 +19,68 @@ export class LoginService {
 
   // Verifica si hay un token almacenado al iniciar el servicio
   private checkAuthStatus(): void {
-    const token = localStorage.getItem(this.authTokenKey);
-    this.isAuthenticatedSubject.next(!!token);
-  }
-
-  // Login
-  login(email: string, password: string): Observable<any> {
-    return this.http.post<any>(this.apiUrl+'/login', { email, password }).pipe(
-      tap((response) => {
-        if (response.token && response.user) {
-          // Almacenar token y datos de usuario
-          localStorage.setItem(this.authTokenKey, response.token);
-          localStorage.setItem(this.userDataKey, JSON.stringify(response.user));
-          this.isAuthenticatedSubject.next(true);
-        }
+    this.http
+      .get<{ authenticated: boolean }>(`${this.apiUrl}/check-auth`, {
+        withCredentials: true,
       })
-    );
+      .subscribe({
+        next: (res) => this.isAuthenticatedSubject.next(res.authenticated),
+        error: () => this.isAuthenticatedSubject.next(false),
+      });
   }
 
-  // Logout
+  login(email: string, password: string): Observable<any> {
+    // Primero obtenemos el token CSRF
+    return this.http
+      .get(`${this.apiUrl}/sanctum/csrf-cookie`, {
+        withCredentials: true,
+      })
+      .pipe(
+        // Luego hacemos el login
+        switchMap(() => {
+          return this.http
+            .post<any>(
+              `${this.apiUrl}/login`,
+              { email, password },
+              {
+                withCredentials: true,
+                observe: 'response',
+              }
+            )
+            .pipe(
+              tap((response) => {
+                if (response.status === 200) {
+                  // Guardamos solo datos de usuario (el token viene en cookie HttpOnly)
+                  localStorage.setItem(
+                    this.userDataKey,
+                    JSON.stringify(response.body.user)
+                  );
+                  this.isAuthenticatedSubject.next(true);
+                }
+              })
+            );
+        })
+      );
+  }
+
   logout(): void {
-    localStorage.removeItem(this.authTokenKey);
-    localStorage.removeItem(this.userDataKey);
-    this.isAuthenticatedSubject.next(false);
-    this.router.navigate(['/login']);
+    this.http
+      .post(
+        `${this.apiUrl}/logout`,
+        {},
+        {
+          withCredentials: true,
+        }
+      )
+      .subscribe({
+        complete: () => {
+          localStorage.removeItem(this.userDataKey);
+          this.isAuthenticatedSubject.next(false);
+          this.router.navigate(['/login']);
+        },
+      });
   }
 
-  // Obtener token
-  getToken(): string | null {
-    return localStorage.getItem(this.authTokenKey);
-  }
-
-  // Obtener datos de usuario
   getUserData(): any {
     const userData = localStorage.getItem(this.userDataKey);
     return userData ? JSON.parse(userData) : null;
