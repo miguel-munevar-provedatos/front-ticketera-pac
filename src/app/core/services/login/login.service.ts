@@ -8,7 +8,8 @@ import { environment } from 'src/environments/environment';
   providedIn: 'root',
 })
 export class LoginService {
-  private apiUrl = environment.base_api; // Reemplaza con tu endpoint real
+  private apiUrl = environment.base_api;
+  private apiWebUrl = environment.base_web_api;
   private isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
   //private authTokenKey = 'authToken';
   private userDataKey = 'userData';
@@ -29,39 +30,32 @@ export class LoginService {
       });
   }
 
-  login(email: string, password: string): Observable<any> {
-    // Primero obtenemos el token CSRF
-    return this.http
-      .get(`${this.apiUrl}/sanctum/csrf-cookie`, {
-        withCredentials: true,
-      })
-      .pipe(
-        // Luego hacemos el login
-        switchMap(() => {
-          return this.http
-            .post<any>(
-              `${this.apiUrl}/login`,
-              { email, password },
-              {
-                withCredentials: true,
-                observe: 'response',
-              }
-            )
-            .pipe(
-              tap((response) => {
-                if (response.status === 200) {
-                  // Guardamos solo datos de usuario (el token viene en cookie HttpOnly)
-                  localStorage.setItem(
-                    this.userDataKey,
-                    JSON.stringify(response.body.user)
-                  );
-                  this.isAuthenticatedSubject.next(true);
-                }
-              })
-            );
-        })
-      );
+  getCsrfToken() {
+    return this.http.get(`${this.apiWebUrl}/sanctum/csrf-cookie`, {
+      responseType: 'text'
+    });
   }
+
+  login(email: string, password: string) {
+    return this.getCsrfToken().pipe(
+      switchMap(() => {
+        return this.http.post<any>(
+          `${this.apiUrl}/login`,
+          { email, password },
+          { observe: 'response' }
+        ).pipe(
+          tap(response => {
+            if (response.status === 200) {
+              localStorage.setItem('userData', JSON.stringify(response.body.user));
+              this.router.navigate(['/home']);
+              this.isAuthenticatedSubject.next(true);
+            }
+          })
+        );
+      })
+    );
+  }
+
 
   logout(): void {
     this.http

@@ -64,36 +64,28 @@ export class LoginPage {
     this.router.navigate(['/forgot-password']);
   }
 
-  onSubmit() {
+ onSubmit() {
     if (this.loginForm.invalid) {
-      // Marcar todos los campos como tocados para mostrar errores
       this.loginForm.markAllAsTouched();
       return;
     }
 
     this.isLoading = true;
+    this.loginError = null;
+
     const { email, password } = this.loginForm.value;
 
-    this.loginService
-      .login(email, password)
-      .pipe(finalize(() => (this.isLoading = false)))
-      .subscribe({
-        next: () => {
-          // Redirigir a la página principal después de iniciar sesión
-          //this.router.navigate(['/home']);
-        },
-        error: (err) => {
-          console.error('Error de autenticación:', err);
-
-          this.dialog.open(ErrorComponent, {
-            data: {
-              message: 'Credenciales incorrectas. Por favor, inténtalo de nuevo.'
-            },
-            width: '350px'
-          });
-
-
-        },
-      });
+    this.loginService.login(email, password).subscribe({
+      next: () => {
+        this.isLoading = false;
+        this.router.navigate(['home']);
+      },
+      error: (err) => {
+        this.isLoading = false;
+        this.loginError = 'Credenciales incorrectas';
+        console.error('Login error:', err);
+      }
+    });
   }
+
 }
