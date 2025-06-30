@@ -36,25 +36,25 @@ export class LoginService {
     });
   }
 
-  login(email: string, password: string) {
-    return this.getCsrfToken().pipe(
-      switchMap(() => {
-        return this.http.post<any>(
-          `${this.apiUrl}/login`,
-          { email, password },
-          { observe: 'response' }
-        ).pipe(
-          tap(response => {
-            if (response.status === 200) {
-              localStorage.setItem('userData', JSON.stringify(response.body.user));
-              this.router.navigate(['/home']);
-              this.isAuthenticatedSubject.next(true);
-            }
-          })
-        );
-      })
-    );
-  }
+  // login(email: string, password: string) {
+  //   return this.getCsrfToken().pipe(
+  //     switchMap(() => {
+  //       return this.http.post<any>(
+  //         `${this.apiUrl}/login`,
+  //         { email, password },
+  //         { observe: 'response' }
+  //       ).pipe(
+  //         tap(response => {
+  //           if (response.status === 200) {
+  //             localStorage.setItem('userData', JSON.stringify(response.body.user));
+  //             this.router.navigate(['/home']);
+  //             this.isAuthenticatedSubject.next(true);
+  //           }
+  //         })
+  //       );
+  //     })
+  //   );
+  // }
 
 
   logout(): void {
@@ -84,4 +84,42 @@ export class LoginService {
   isAuthenticated(): Observable<boolean> {
     return this.isAuthenticatedSubject.asObservable();
   }
+
+  checkAuth(): Observable<{ authenticated: boolean }> {
+    return this.http.get<{ authenticated: boolean }>(
+      `${this.apiUrl}/check-auth`,
+      { withCredentials: true }
+    ).pipe(
+      tap(res => this.isAuthenticatedSubject.next(res.authenticated))
+    );
+  }
+
+  login(email: string, password: string): Observable<any> {
+    return this.http.get(`${this.apiWebUrl}/sanctum/csrf-cookie`, {
+        withCredentials: true,
+        responseType: 'text'
+      }).pipe(
+        switchMap(() => {
+          return this.http.post<any>(
+            `${this.apiUrl}/login`,
+            { email, password },
+            {
+              withCredentials: true,
+              observe: 'response'
+            }
+          ).pipe(
+            tap(response => {
+              if (response.status === 200) {
+                localStorage.setItem(
+                  this.userDataKey,
+                  JSON.stringify(response.body.user)
+                );
+                this.isAuthenticatedSubject.next(true);
+              }
+            })
+          );
+        })
+      );
+  }
+
 }
