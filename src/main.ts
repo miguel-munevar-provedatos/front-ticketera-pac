@@ -12,7 +12,7 @@ import { MatDialogModule } from '@angular/material/dialog';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { importProvidersFrom } from '@angular/core';
 import { CookieService } from 'ngx-cookie-service';
-
+import 'ionicons';
 
 bootstrapApplication(AppComponent, {
   providers: [

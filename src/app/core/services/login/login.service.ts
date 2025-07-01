@@ -36,27 +36,6 @@ export class LoginService {
     });
   }
 
-  // login(email: string, password: string) {
-  //   return this.getCsrfToken().pipe(
-  //     switchMap(() => {
-  //       return this.http.post<any>(
-  //         `${this.apiUrl}/login`,
-  //         { email, password },
-  //         { observe: 'response' }
-  //       ).pipe(
-  //         tap(response => {
-  //           if (response.status === 200) {
-  //             localStorage.setItem('userData', JSON.stringify(response.body.user));
-  //             this.router.navigate(['/home']);
-  //             this.isAuthenticatedSubject.next(true);
-  //           }
-  //         })
-  //       );
-  //     })
-  //   );
-  // }
-
-
   logout(): void {
     this.http
       .post(
